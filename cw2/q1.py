@@ -296,9 +296,9 @@ def time_and_plots(type = 'GS'):
     start = time.time()
     if type == 'GS':
         # q, s, r, u, step_size, type
-        U, X, Y, loops = finite_diff_laplace(1, 4, 0.75, 3.5, 0.05, 'GS')
+        U, X, Y, loops = finite_diff_laplace(1, 2, 0.75, 0.2, 0.1, 'GS')
     elif type == 'Jacobi':
-        U, X, Y, loops = finite_diff_laplace(1, 4, 0.75, 3.5, 0.05, 'Jacobi')
+        U, X, Y, loops = finite_diff_laplace(1, 2, 0.75, 0.2, 0.1, 'Jacobi')
     elif type == 'SOR':
         # q, s, r, u, step_size, alpha
         U, X, Y, loops = finite_diff_laplace_SOR(1, 4, 0.75, 3.5, 0.05, 1)
@@ -327,7 +327,7 @@ def time_and_plots(type = 'GS'):
     plt.show()
 
     # Plot colour graph
-    colorinterpolation = 50
+    colorinterpolation = 100
     colourMap = plt.cm.jet
     plt.contourf(X, Y, U, colorinterpolation, cmap=colourMap)
     plt.colorbar()
@@ -344,7 +344,10 @@ def time_and_plots(type = 'GS'):
     plt.title("Velocity at (x, y)")
     plt.show()
 
+# 28.89, 10088
 time_and_plots('GS')
+# 40.44, 14477
 time_and_plots('Jacobi')
-time_and_plots('SOR')
+# 38.29, 10088
+# time_and_plots('SOR')
 
