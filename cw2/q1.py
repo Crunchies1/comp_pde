@@ -221,16 +221,19 @@ def dxdy_shifted(x, tao):
         return 0
     return np.sqrt(x - x ** 2) / (tao * (1 - 2 * x))
 
-def finite_diff_laplace_shifted_SOR(q, s, r, u, step_size, alpha):
+# 0 < x < 1
+def finite_diff_laplace_shifted_SOR(r, u, step_size, alpha, tao):
     # Create mesh grid where x step and y step same
-    x_range = np.arange(-q, s + step_size, step_size)
-    n_range = np.arange(0, r + step_size, step_size)
+    x_range = np.arange(0.01, 1, step_size)
+    n_range = np.arange(0.01, r, step_size)
     X, N = np.meshgrid(x_range, n_range)
 
     # Initial condition
     U = np.zeros_like(X)
     U[:, -1] = u
+    U[:, 1] = -u
     m, n = U.shape
+    loops = 0
 
     U_prev = np.ones_like(U)
     while np.linalg.norm(U_prev - U) > 1e-5:
@@ -259,8 +262,14 @@ def finite_diff_laplace_shifted_SOR(q, s, r, u, step_size, alpha):
 
                 # For any point on upper boundary
                 elif i == 0 and (j > 0 and j < (n - 1)):
-                    U[i, j] = U[i, j] + alpha * (1/4 * (2 * U[i + 1, j] + U[i, j + 1] + U[i, j - 1]) - U[i, j])
-
+                    dndx = (tao * (2 * x_range[j] - 1)) / np.sqrt(x_range[j] - x_range[j] ** 2)
+                    d2ndx2 = tao / (2 * (x_range[j] - x_range[j] ** 2) ** (3/2))
+                    x_adj = U[i, j + 1] + U[i, j - 1]
+                    n_adj = 2 * U[i + 1, j]
+                    dphidn = 2 * U[i + 1, j]
+                    diag_sum = 0
+                    U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (n_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
+          
                 # For any point on left boundary
                 elif (i > 0 and i < (m - 1)) and j == 0:
                     # U[i, j] = U[i, j] + alpha * (1/4 * (U[i + 1, j] + U[i - 1, j] + 2 * U[i, j + 1]) - U[i, j])
@@ -271,25 +280,40 @@ def finite_diff_laplace_shifted_SOR(q, s, r, u, step_size, alpha):
                     # U[i, j] = U[i, j] + alpha * (1/4 * (U[i + 1, j] + U[i - 1, j] + 2 * U[i, j - 1]) - U[i, j])
                     U[i, j] = u
 
-                # For any point on the non-aerofoil bottom boundary
-                elif i == m - 1 and (x_range[j] < 0.01 or x_range[j] > 0.99):
-                    U[i, j] = U[i, j] + alpha * (1/4 * (2 * U[i - 1, j] + U[i, j - 1] + U[i, j + 1]) - U[i, j])
-
                 # For any point on the aerofoil bottom boundary
+                elif i == m - 1 and (j > 1 and j < (n - 2)):
+                    grad_foil = grad_yb_aerofoil(x_range[j], 0.05)
+                    dndx = (tao * (2 * x_range[j] - 1)) / np.sqrt(x_range[j] - x_range[j] ** 2)
+                    d2ndx2 = tao / (2 * (x_range[j] - x_range[j] ** 2) ** (3/2))
+                    x_adj = U[i, j + 1] + U[i, j - 1]
+                    y_adj = 2 * U[i - 1, j] - (2 * step_size + U[i, j + 1] - U[i, j - 1]) * grad_foil
+                    dphidn = (2 * step_size + U[i, j + 1] - U[i, j - 1]) * grad_foil
+                    diag_sum = grad_foil * (U[i, j + 2] + U[i, j - 2] - 2 * U[i, j])
+                    U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (y_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
+
+                # Points on bottom boundary next to corner
                 elif i == m - 1:
-                    r = (1 + dxdy_shifted(x_range[j], 0.05) ** 2)
-                    U[i, j] = U[i, j] + alpha * (1/4 * (U[i, j + 1] * (1 + r) + U[i, j - 1] * (1 - r) + 2 * (U[i - 1, j])) - U[i, j])
-
-                # For any point in the grid not in the aerofoil range
-                elif (x_range[j] < 0.01 or x_range[j] > 0.99):
-                    U[i, j] = U[i, j] + alpha * (1/4 * (U[i - 1, j] + U[i + 1, j] + U[i, j - 1] + U[i, j + 1]) - U[i, j])
-
+                    grad_foil = grad_yb_aerofoil(x_range[j], 0.05)
+                    dndx = (tao * (2 * x_range[j] - 1)) / np.sqrt(x_range[j] - x_range[j] ** 2)
+                    d2ndx2 = tao / (2 * (x_range[j] - x_range[j] ** 2) ** (3/2))
+                    x_adj = U[i, j + 1] + U[i, j - 1]
+                    y_adj = 2 * U[i - 1, j] - (2 * step_size + U[i, j + 1] - U[i, j - 1]) * grad_foil
+                    dphidn = (2 * step_size + U[i, j + 1] - U[i, j - 1]) * grad_foil
+                    diag_sum = 0
+                    U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (y_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
+                
                 # For any other point in grid
                 else:
-                    r = (1 + dxdy_shifted(x_range[j], 0.05) ** 2)
-                    U[i, j] = U[i, j] + alpha * (1/(2 + 2 * r) * (U[i - 1, j] + U[i + 1, j] + r * (U[i, j - 1] + U[i, j + 1])) - U[i, j])
+                    dndx = (tao * (2 * x_range[j] - 1)) / np.sqrt(x_range[j] - x_range[j] ** 2)
+                    d2ndx2 = tao / (2 * (x_range[j] - x_range[j] ** 2) ** (3/2))
+                    x_adj = U[i, j + 1] + U[i, j - 1]
+                    y_adj = U[i + 1, j] + U[i - 1, j]
+                    dphidn = U[i - 1, j] - U[i + 1, j]
+                    diag_sum = U[i + 1, j - 1] + U[i - 1, j + 1] - U[i + 1, j + 1] - U[i - 1, j - 1]
+                    U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (y_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
+        loops += 1
 
-    return np.flip(U, axis=0), X, N
+    return np.flip(U, axis=0), X, N, loops
 
 
 def time_and_plots(type = 'GS'):
@@ -303,7 +327,8 @@ def time_and_plots(type = 'GS'):
         # q, s, r, u, step_size, alpha
         U, X, Y, loops = finite_diff_laplace_SOR(1, 4, 0.75, 3.5, 0.05, 1)
     elif type == 'Shifted':
-        U, X, Y, loops = finite_diff_laplace_shifted_SOR(1, 2, 1, 1, 0.1, 1)
+        # r, u, step_size, alpha, tao
+        U, X, Y, loops = finite_diff_laplace_shifted_SOR(1, 1, 0.1, 1, 0.05)
     end = time.time()
 
     # Show convergence times
@@ -345,9 +370,10 @@ def time_and_plots(type = 'GS'):
     plt.show()
 
 # 28.89, 10088
-time_and_plots('GS')
+# time_and_plots('GS')
 # 40.44, 14477
-time_and_plots('Jacobi')
+# time_and_plots('Jacobi')
 # 38.29, 10088
 # time_and_plots('SOR')
+time_and_plots('Shifted')
 
