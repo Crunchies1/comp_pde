@@ -224,8 +224,8 @@ def dxdy_shifted(x, tao):
 # 0 < x < 1
 def finite_diff_laplace_shifted_SOR(r, u, step_size, alpha, tao):
     # Create mesh grid where x step and y step same
-    x_range = np.arange(0.01, 1, step_size)
-    n_range = np.arange(0.01, r, step_size)
+    x_range = np.arange(0, 1 + step_size, step_size)
+    n_range = np.arange(0, r + step_size, step_size)
     X, N = np.meshgrid(x_range, n_range)
 
     # Initial condition
@@ -266,7 +266,7 @@ def finite_diff_laplace_shifted_SOR(r, u, step_size, alpha, tao):
                     d2ndx2 = tao / (2 * (x_range[j] - x_range[j] ** 2) ** (3/2))
                     x_adj = U[i, j + 1] + U[i, j - 1]
                     n_adj = 2 * U[i + 1, j]
-                    dphidn = 2 * U[i + 1, j]
+                    dphidn = 0
                     diag_sum = 0
                     U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (n_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
           
@@ -286,10 +286,10 @@ def finite_diff_laplace_shifted_SOR(r, u, step_size, alpha, tao):
                     dndx = (tao * (2 * x_range[j] - 1)) / np.sqrt(x_range[j] - x_range[j] ** 2)
                     d2ndx2 = tao / (2 * (x_range[j] - x_range[j] ** 2) ** (3/2))
                     x_adj = U[i, j + 1] + U[i, j - 1]
-                    y_adj = 2 * U[i - 1, j] - (2 * step_size + U[i, j + 1] - U[i, j - 1]) * grad_foil
+                    n_adj = 2 * U[i - 1, j] - (2 * step_size + U[i, j + 1] - U[i, j - 1]) * grad_foil
                     dphidn = (2 * step_size + U[i, j + 1] - U[i, j - 1]) * grad_foil
                     diag_sum = grad_foil * (U[i, j + 2] + U[i, j - 2] - 2 * U[i, j])
-                    U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (y_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
+                    U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (n_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
 
                 # Points on bottom boundary next to corner
                 elif i == m - 1:
@@ -297,20 +297,20 @@ def finite_diff_laplace_shifted_SOR(r, u, step_size, alpha, tao):
                     dndx = (tao * (2 * x_range[j] - 1)) / np.sqrt(x_range[j] - x_range[j] ** 2)
                     d2ndx2 = tao / (2 * (x_range[j] - x_range[j] ** 2) ** (3/2))
                     x_adj = U[i, j + 1] + U[i, j - 1]
-                    y_adj = 2 * U[i - 1, j] - (2 * step_size + U[i, j + 1] - U[i, j - 1]) * grad_foil
+                    n_adj = 2 * U[i - 1, j] - (2 * step_size + U[i, j + 1] - U[i, j - 1]) * grad_foil
                     dphidn = (2 * step_size + U[i, j + 1] - U[i, j - 1]) * grad_foil
                     diag_sum = 0
-                    U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (y_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
+                    U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (n_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
                 
                 # For any other point in grid
                 else:
                     dndx = (tao * (2 * x_range[j] - 1)) / np.sqrt(x_range[j] - x_range[j] ** 2)
                     d2ndx2 = tao / (2 * (x_range[j] - x_range[j] ** 2) ** (3/2))
                     x_adj = U[i, j + 1] + U[i, j - 1]
-                    y_adj = U[i + 1, j] + U[i - 1, j]
+                    n_adj = U[i + 1, j] + U[i - 1, j]
                     dphidn = U[i - 1, j] - U[i + 1, j]
                     diag_sum = U[i + 1, j - 1] + U[i - 1, j + 1] - U[i + 1, j + 1] - U[i - 1, j - 1]
-                    U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (y_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
+                    U[i, j] = U[i, j] + alpha * (((x_adj + ((diag_sum * dndx) / 2) + (n_adj * ((dndx ** 2) + 1)) + ((step_size/2) * (dphidn) * (d2ndx2))) / (2 * (2 + dndx ** 2))) - U[i, j])
         loops += 1
 
     return np.flip(U, axis=0), X, N, loops
@@ -328,7 +328,7 @@ def time_and_plots(type = 'GS'):
         U, X, Y, loops = finite_diff_laplace_SOR(1, 4, 0.75, 3.5, 0.05, 1)
     elif type == 'Shifted':
         # r, u, step_size, alpha, tao
-        U, X, Y, loops = finite_diff_laplace_shifted_SOR(1, 1, 0.1, 1, 0.05)
+        U, X, Y, loops = finite_diff_laplace_shifted_SOR(0.5, 2, 0.02, 1, 0.05)
     end = time.time()
 
     # Show convergence times
