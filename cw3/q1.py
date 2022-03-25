@@ -11,7 +11,7 @@ def one_dimensional_wave_solver(x_steps, t_steps, delta, boundary = 'pass'):
     # distance of step
     dx = x[1] - x[0]
     # discrete points in time
-    t = np.linspace(0, 20, t_steps + 1)
+    t = np.linspace(0, 10, t_steps + 1)
     # time steps 
     dt = t[1] - t[0]
 
@@ -24,9 +24,10 @@ def one_dimensional_wave_solver(x_steps, t_steps, delta, boundary = 'pass'):
     else:
         print(boundary)
 
-    # Define mesh constant (dt)**2/(dx)**2
+    # Define mesh constant
     c = 1
     mesh = (c * dt) / dx
+    print(dx, dt)
     print(mesh)
 
     # Initial conditions 
@@ -36,16 +37,6 @@ def one_dimensional_wave_solver(x_steps, t_steps, delta, boundary = 'pass'):
         else:
             prev_u[i, 0] = 0
 
-    # Calculate cur_u for t = 0
-    for i in range(1, x_steps):
-        cur_u[i] = prev_u[i, 0] + (cx(x[i]) * (mesh ** 2) / 2) * (prev_u[i - 1, 0] - 2 * prev_u[i, 0] + prev_u[i + 1, 0])
-    # Boundary conditions
-    cur_u[0] = prev_u[0, 0] - (cx(x[0]) * (mesh ** 2)) * (prev_u[1, 0] - prev_u[0, 0])
-    cur_u[-1] = prev_u[-1, 0] + (cx(x[-1]) * (mesh ** 2)) * (prev_u[-1, 0] - prev_u[-2, 0])
-
-    # Swap variables
-    prev_u[:, 1] = cur_u.copy()
-
     # Iterate through time steps
     for t in range(0, t_steps + 1):
         # For the first time step
@@ -53,8 +44,15 @@ def one_dimensional_wave_solver(x_steps, t_steps, delta, boundary = 'pass'):
             for i in range(1, x_steps):
                 cur_u[i] = prev_u[i, t] + (cx(x[i]) * (mesh ** 2) / 2) * (prev_u[i - 1, t] - 2 * prev_u[i, t] + prev_u[i + 1, t])
             # Boundary conditions
-            cur_u[0] = prev_u[0, 0] - (cx(x[0]) * (mesh ** 2)) * (prev_u[1, 0] - prev_u[0, 0])
-            cur_u[-1] = prev_u[-1, 0] + (cx(x[-1]) * (mesh ** 2)) * (prev_u[-1, 0] - prev_u[-2, 0])
+            if boundary == 'pass':
+                
+                cur_u[0] = prev_u[0, t] +  mesh * (prev_u[1, t] - prev_u[0, t])
+                cur_u[-1] = prev_u[-1, t] - mesh * (prev_u[-1, t] - prev_u[-2, t])
+                # cur_u[0] = (2 * prev_u[0, t] - (mesh - 1) * prev_u[0, t - 1] + 2 * (mesh ** 2) * (prev_u[1, t] - prev_u[0, t])) / (mesh + 1)
+                # cur_u[-1] = (2 * prev_u[-1, t] - (mesh - 1) * prev_u[-1, t - 1] + 2 * (mesh ** 2) * (prev_u[-2, t] - prev_u[-1, t])) / (mesh + 1)
+            else:
+                cur_u[0] = 2 * prev_u[0, t] - prev_u[0, t - 1] + 2 * (mesh ** 2) * (prev_u[1, t] - prev_u[0, t])
+                cur_u[-1] = 2 * prev_u[-1, t] - prev_u[-1, t - 1] + 2  * (mesh ** 2) * (prev_u[-2, t] - prev_u[-1, t])
 
         else:
             # equation for computing u
@@ -62,12 +60,17 @@ def one_dimensional_wave_solver(x_steps, t_steps, delta, boundary = 'pass'):
                 cur_u[i] = 2 * prev_u[i, t] - prev_u[i, t - 1] + cx(x[i]) * (mesh ** 2) * (prev_u[i - 1, t] - 2 * prev_u[i, t] + prev_u[i + 1, t])
             # Boundary conditions
             if boundary == 'pass':
-                '''
-                cur_u[0] = prev_u[0, t] + cx(x[0]) * mesh * (prev_u[1, t] - prev_u[0, t])
-                cur_u[-1] = prev_u[-1, t] - cx(x[-1]) * mesh * (prev_u[-2, t] - prev_u[-1, t])
-                '''
-                cur_u[0] = (2 * prev_u[0, t] - (mesh - 1) * prev_u[0, t - 1] + 2 * (mesh ** 2) * (prev_u[1, t] - prev_u[0, t])) / (mesh + 1)
-                cur_u[-1] = (2 * prev_u[-1, t] - (mesh - 1) * prev_u[-1, t - 1] + 2 * (mesh ** 2) * (prev_u[-2, t] - prev_u[-1, t])) / (mesh + 1)
+                
+                #cur_u[0] = prev_u[0, t] +  mesh * (prev_u[1, t] - prev_u[0, t])
+                #cur_u[-1] = prev_u[-1, t] - mesh * (prev_u[-1, t] - prev_u[-2, t])
+                # print((2 * prev_u[0, t] - (-mesh - 1) * prev_u[0, t - 1] + (2 * mesh ** 2) * (prev_u[1, t] - prev_u[0, t])) / (-mesh + 1))
+                cur_u[0] = (2 * prev_u[0, t] + (mesh - 1) * prev_u[0, t - 1] + (2 * mesh ** 2) * (prev_u[1, t] - prev_u[0, t])) / (mesh + 1)
+                cur_u[-1] = (2 * prev_u[-1, t] + (mesh - 1) * prev_u[-1, t - 1] + 2 * (mesh ** 2) * (prev_u[-2, t] - prev_u[-1, t])) / (mesh + 1)
+            elif boundary == 'pml':
+
+                cur_u[0] = prev_u[0, t] + mesh * (1 / (1 + 0.3j)) * (prev_u[1, t] - prev_u[0, t]) 
+                cur_u[-1] = prev_u[-1, t] - mesh * (1 / (1 + 0.3j)) * (prev_u[-1, t] - prev_u[-2, t]) 
+
             else:
                 cur_u[0] = 2 * prev_u[0, t] - prev_u[0, t - 1] + 2 * (mesh ** 2) * (prev_u[1, t] - prev_u[0, t])
                 cur_u[-1] = 2 * prev_u[-1, t] - prev_u[-1, t - 1] + 2  * (mesh ** 2) * (prev_u[-2, t] - prev_u[-1, t])
@@ -108,13 +111,18 @@ def one_dimensional_wave_solver(x_steps, t_steps, delta, boundary = 'pass'):
     # Return final u value
     return prev_u[:, -1], prev_u
 
-last_val, vals = one_dimensional_wave_solver(40, 1600, 0.1, 'pass')
+last_val, vals = one_dimensional_wave_solver(80, 400, 0.1, 'pass')
+
 fig = plt.figure()
-ims = []
+ax = plt.gca()
+ax.set_ylim([-0.5, 1])
+plts = []             # get ready to populate this list the Line artists to be plotted
+
 for i in range(len(vals[0])):
-    im = plt.imshow(vals[:, i].reshape(1, -1), animated=True)
-    ims.append([im])
-ani = animation.ArtistAnimation(fig, ims, interval=50, blit=False,
-                                repeat_delay=1000)
+    p, = plt.plot(vals[:, i], 'k')   # this is how you'd plot a single line...
+    plts.append( [p] )           # ... but save the line artist for the animation
+ani = animation.ArtistAnimation(fig, plts, interval=50, repeat_delay=3000)   # run the animation
+# ani.save('wave.')    # optionally save it to a file
+
 plt.show()
 # print(one_dimensional_wave_solver_infinite(20, 0.025, 0.01, 'pass'))
